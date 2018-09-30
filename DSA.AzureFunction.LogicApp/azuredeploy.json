@@ -1,0 +1,238 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "logicAppName": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of the logic app to create."
+      }
+    },
+    "testUri": {
+      "type": "string",
+      "defaultValue": "http://azure.microsoft.com/en-us/status/feed/",
+      "metadata": {
+        "description": "A test URI"
+      }
+    },
+    "LogicAppLocation": {
+      "type": "string",
+      "minLength": 1,
+      "allowedValues": [
+        "[resourceGroup().location]",
+        "eastasia",
+        "southeastasia",
+        "centralus",
+        "eastus",
+        "eastus2",
+        "westus",
+        "northcentralus",
+        "southcentralus",
+        "northeurope",
+        "westeurope",
+        "japanwest",
+        "japaneast",
+        "brazilsouth",
+        "australiaeast",
+        "australiasoutheast",
+        "southindia",
+        "centralindia",
+        "westindia",
+        "canadacentral",
+        "canadaeast",
+        "uksouth",
+        "ukwest",
+        "westcentralus",
+        "westus2"
+      ],
+      "defaultValue": "[resourceGroup().location]"
+    },
+    "azurequeues_1_Connection_Name": {
+      "type": "string",
+      "defaultValue": "azurequeues"
+    },
+    "azurequeues_1_Connection_DisplayName": {
+      "type": "string",
+      "defaultValue": "DefaultEndpointsProtocol=https;AccountName=sfaprojectstorage;AccountKey=1NYczrElkX9nKWq64UlMewBeuWJoP7xh6JyvJCI4FPwCiWgQ1F/QGs8oy7gDCxOVc7GUOuMWHa1GVFAycPt8kg==;EndpointSuffix=core.windows.net"
+    },
+    "azurequeues_1_storageaccount": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of your storage account"
+      },
+      "defaultValue": "sfaprojectstorage"
+    },
+    "azurequeues_1_sharedkey": {
+      "type": "securestring",
+      "metadata": {
+        "description": "The shared storage key of your storage account"
+      }
+    },
+    "azurequeues_2_Connection_Name": {
+      "type": "string",
+      "defaultValue": "azurequeues-1"
+    },
+    "azurequeues_2_Connection_DisplayName": {
+      "type": "string",
+      "defaultValue": "DefaultEndpointsProtocol=https;AccountName=sfabetastorage;AccountKey=ljxSmczE4I1hGduI1Ge8bS7u7wzfOex2kgs6btpCXTNKufp1CYz/QEVlGx0SaqUR1CegamUVEy8UScSxUWeUGQ==;EndpointSuffix=core.windows.net"
+    },
+    "azurequeues_2_storageaccount": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of your storage account"
+      },
+      "defaultValue": "sfabetastorage"
+    },
+    "azurequeues_2_sharedkey": {
+      "type": "securestring",
+      "metadata": {
+        "description": "The shared storage key of your storage account"
+      }
+    }
+  },
+  "variables": {},
+  "resources": [
+    {
+      "type": "Microsoft.Logic/workflows",
+      "apiVersion": "2016-06-01",
+      "name": "[parameters('logicAppName')]",
+      "location": "[parameters('LogicAppLocation')]",
+      "tags": {
+        "displayName": "LogicApp"
+      },
+      "properties": {
+        "definition": {
+          "$schema": "http://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+          "actions": {
+            "Put_a_message_on_a_queue": {
+              "type": "ApiConnection",
+              "inputs": {
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['azurequeues']['connectionId']"
+                  }
+                },
+                "method": "post",
+                "path": "/@{encodeURIComponent('vacancysummaryqueueitem')}/messages",
+                "body": "Execute Function"
+              },
+              "runAfter": {}
+            },
+            "Condition": {
+              "type": "If",
+              "expression": "@equals(body('Put_a_message_on_a_queue'), 'message test')",
+              "actions": {
+                "fnc2": {
+                  "type": "Function",
+                  "inputs": {
+                    "function": {
+                      "id": "/subscriptions/b20a7294-6951-4107-88df-d7d320218670/resourceGroups/sfabetagroup/providers/Microsoft.Web/sites/sfabetaRestApiFunction/functions/fnc2"
+                    }
+                  },
+                  "runAfter": {}
+                }
+              },
+              "runAfter": {
+                "Put_a_message_on_a_queue": [
+                  "Succeeded"
+                ]
+              },
+              "else": {
+                "actions": {
+                  "Put_a_message_on_a_queue_2": {
+                    "type": "ApiConnection",
+                    "inputs": {
+                      "host": {
+                        "connection": {
+                          "name": "@parameters('$connections')['azurequeues_1']['connectionId']"
+                        }
+                      },
+                      "method": "post",
+                      "path": "/@{encodeURIComponent('errorqueue')}/messages",
+                      "body": "error message"
+                    },
+                    "runAfter": {}
+                  }
+                }
+              }
+            }
+          },
+          "parameters": {
+            "$connections": {
+              "defaultValue": {},
+              "type": "Object"
+            },
+            "testURI": {
+              "type": "string",
+              "defaultValue": "[parameters('testUri')]"
+            }
+          },
+          "triggers": {
+            "Recurrence": {
+              "type": "Recurrence",
+              "recurrence": {
+                "frequency": "Minute",
+                "interval": 3
+              }
+            }
+          },
+          "contentVersion": "1.0.0.0",
+          "outputs": {}
+        },
+        "parameters": {
+          "$connections": {
+            "value": {
+              "azurequeues": {
+                "id": "[concat(subscription().id, '/providers/Microsoft.Web/locations/', parameters('LogicAppLocation'), '/managedApis/', 'azurequeues')]",
+                "connectionId": "[resourceId('Microsoft.Web/connections', parameters('azurequeues_1_Connection_Name'))]",
+                "connectionName": "[parameters('azurequeues_1_Connection_Name')]"
+              },
+              "azurequeues_1": {
+                "id": "[concat(subscription().id, '/providers/Microsoft.Web/locations/', parameters('LogicAppLocation'), '/managedApis/', 'azurequeues')]",
+                "connectionId": "[resourceId('Microsoft.Web/connections', parameters('azurequeues_2_Connection_Name'))]",
+                "connectionName": "[parameters('azurequeues_2_Connection_Name')]"
+              }
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/connections', parameters('azurequeues_1_Connection_Name'))]",
+        "[resourceId('Microsoft.Web/connections', parameters('azurequeues_2_Connection_Name'))]"
+      ]
+    },
+    {
+      "type": "MICROSOFT.WEB/CONNECTIONS",
+      "apiVersion": "2016-06-01",
+      "name": "[parameters('azurequeues_1_Connection_Name')]",
+      "location": "[parameters('LogicAppLocation')]",
+      "properties": {
+        "api": {
+          "id": "[concat(subscription().id, '/providers/Microsoft.Web/locations/', parameters('LogicAppLocation'), '/managedApis/', 'azurequeues')]"
+        },
+        "displayName": "[parameters('azurequeues_1_Connection_DisplayName')]",
+        "parameterValues": {
+          "storageaccount": "[parameters('azurequeues_1_storageaccount')]",
+          "sharedkey": "[parameters('azurequeues_1_sharedkey')]"
+        }
+      }
+    },
+    {
+      "type": "MICROSOFT.WEB/CONNECTIONS",
+      "apiVersion": "2016-06-01",
+      "name": "[parameters('azurequeues_2_Connection_Name')]",
+      "location": "[parameters('LogicAppLocation')]",
+      "properties": {
+        "api": {
+          "id": "[concat(subscription().id, '/providers/Microsoft.Web/locations/', parameters('LogicAppLocation'), '/managedApis/', 'azurequeues')]"
+        },
+        "displayName": "[parameters('azurequeues_2_Connection_DisplayName')]",
+        "parameterValues": {
+          "storageaccount": "[parameters('azurequeues_2_storageaccount')]",
+          "sharedkey": "[parameters('azurequeues_2_sharedkey')]"
+        }
+      }
+    }
+  ],
+  "outputs": {}
+}

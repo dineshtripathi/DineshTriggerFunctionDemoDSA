@@ -1,0 +1,43 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net461</TargetFramework>
+    <Configurations>Debug;Release;Prod;Staging</Configurations>
+  </PropertyGroup>
+  <ItemGroup>    
+    <PackageReference Include="Microsoft.Azure.DocumentDB" Version="1.17.0" />    
+    <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="1.0.2" />    
+    <PackageReference Include="Microsoft.VisualStudio.SlowCheetah" Version="3.0.61" />    
+    <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />    
+    <PackageReference Include="RestSharp" Version="105.2.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\DSA.AzureFunction.APIHelper\DSA.PIHelper.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.CSharp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="host.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="local.settings.AzureFunctionsProfile.json">
+      <IsTransformFile>True</IsTransformFile>
+    </None>
+    <None Update="local.settings.Debug.json">
+      <IsTransformFile>True</IsTransformFile>
+    </None>
+    <None Update="local.settings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TransformOnBuild>true</TransformOnBuild>
+    </None>
+    <None Update="local.settings.Prod.json">
+      <IsTransformFile>True</IsTransformFile>
+    </None>
+    <None Update="local.settings.Release.json">
+      <IsTransformFile>True</IsTransformFile>
+    </None>
+    <None Update="local.settings.Staging.json">
+      <IsTransformFile>True</IsTransformFile>
+    </None>
+  </ItemGroup>
+</Project>

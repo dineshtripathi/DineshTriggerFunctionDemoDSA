@@ -1,0 +1,385 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "logicAppName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "metadata": {
+        "description": "Name of the Logic App."
+      }
+    },
+    "logicAppLocation": {
+      "type": "string",
+      "defaultValue": "westeurope",
+      "allowedValues": [
+        "[resourceGroup().location]",
+        "eastasia",
+        "southeastasia",
+        "centralus",
+        "eastus",
+        "eastus2",
+        "westus",
+        "northcentralus",
+        "southcentralus",
+        "northeurope",
+        "westeurope",
+        "japanwest",
+        "japaneast",
+        "brazilsouth",
+        "australiaeast",
+        "australiasoutheast",
+        "southindia",
+        "centralindia",
+        "westindia",
+        "canadacentral",
+        "canadaeast",
+        "uksouth",
+        "ukwest",
+        "westcentralus",
+        "westus2"
+      ],
+      "metadata": {
+        "description": "Location of the Logic App."
+      }
+    },
+    "azurequeues_1_Connection_Name": {
+      "type": "string",
+      "defaultValue": "azurequeues-6"
+    },
+    "azurequeues_1_Connection_DisplayName": {
+      "type": "string",
+      "defaultValue": "errorlogicapp"
+    },
+    "azurequeues_1_storageaccount": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of your storage account"
+      },
+      "defaultValue": "sfabetastorage"
+    },
+    "azurequeues_1_sharedkey": {
+      "type": "securestring",
+      "metadata": {
+        "description": "The shared storage key of your storage account"
+      }
+    },
+    "azurequeues_3_Connection_Name": {
+      "type": "string",
+      "defaultValue": "azurequeues-3"
+    },
+    "azurequeues_3_Connection_DisplayName": {
+      "type": "string",
+      "defaultValue": "MessageQueue3"
+    },
+    "azurequeues_3_storageaccount": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of your storage account"
+      },
+      "defaultValue": "sfabetastorage"
+    },
+    "azurequeues_3_sharedkey": {
+      "type": "securestring",
+      "metadata": {
+        "description": "The shared storage key of your storage account"
+      }
+    },
+    "azurequeues_2_Connection_Name": {
+      "type": "string",
+      "defaultValue": "azurequeues-1"
+    },
+    "azurequeues_2_Connection_DisplayName": {
+      "type": "string",
+      "defaultValue": "MessageQueue1"
+    },
+    "azurequeues_2_storageaccount": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of your storage account"
+      },
+      "defaultValue": "sfabetastorage"
+    },
+    "azurequeues_2_sharedkey": {
+      "type": "securestring",
+      "metadata": {
+        "description": "The shared storage key of your storage account"
+      }
+    }
+  },
+  "variables": {},
+  "resources": [
+    {
+      "name": "[parameters('logicAppName')]",
+      "type": "Microsoft.Logic/workflows",
+      "location": "[parameters('logicAppLocation')]",
+      "tags": {
+        "displayName": "LogicApp"
+      },
+      "apiVersion": "2016-06-01",
+      "properties": {
+        "definition": {
+          "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+          "actions": {
+            "ApprenticeshipTriggerFunction_2": {
+              "type": "Function",
+              "inputs": {
+                "body": "@body('HTTP')",
+                "method": "POST",
+                "function": {
+                  "id": "/subscriptions/b20a7294-6951-4107-88df-d7d320218670/resourceGroups/mms-weu/providers/Microsoft.Web/sites/sfadsatriggerfunction/functions/ApprenticeshipTriggerFunction"
+                }
+              },
+              "runAfter": {
+                "HTTP": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Condition": {
+              "type": "If",
+              "expression": "@equals(outputs('HTTP')['statusCode'], 400)",
+              "actions": {
+                "Put_a_message_on_a_queue": {
+                  "type": "ApiConnection",
+                  "inputs": {
+                    "host": {
+                      "connection": {
+                        "name": "@parameters('$connections')['azurequeues']['connectionId']"
+                      }
+                    },
+                    "method": "post",
+                    "path": "/@{encodeURIComponent('errorqueue')}/messages",
+                    "body": "{\"success message\":@{body('ApprenticeshipTriggerFunction_2')}@{outputs('ApprenticeshipTriggerFunction_2')['statusCode']}@{body('HTTP')}@{outputs('HTTP')['statusCode']}}"
+                  },
+                  "runAfter": {}
+                }
+              },
+              "runAfter": {
+                "ApprenticeshipTriggerFunction_2": [
+                  "Succeeded",
+                  "Failed"
+                ]
+              },
+              "else": {
+                "actions": {
+                  "Put_a_message_on_a_queue_2": {
+                    "type": "ApiConnection",
+                    "inputs": {
+                      "host": {
+                        "connection": {
+                          "name": "@parameters('$connections')['azurequeues']['connectionId']"
+                        }
+                      },
+                      "method": "post",
+                      "path": "/@{encodeURIComponent('errorqueue')}/messages",
+                      "body": "{\"failed message\":@{body('ApprenticeshipTriggerFunction_2')}@{outputs('ApprenticeshipTriggerFunction_2')['statusCode']}@{body('HTTP')}@{outputs('HTTP')['statusCode']}}"
+                    },
+                    "runAfter": {}
+                  }
+                }
+              }
+            },
+            "Condition_2": {
+              "type": "If",
+              "expression": "@greater(outputs('logicappfunctiondemo')['statusCode'], 400)",
+              "actions": {
+                "Put_a_message_on_a_queue_4": {
+                  "type": "ApiConnection",
+                  "inputs": {
+                    "host": {
+                      "connection": {
+                        "name": "@parameters('$connections')['azurequeues']['connectionId']"
+                      }
+                    },
+                    "method": "post",
+                    "path": "/@{encodeURIComponent('errorqueue')}/messages",
+                    "body": "{\"Message Processed\" : @{body('logicappfunctiondemo')}@{outputs('logicappfunctiondemo')['statusCode']}}"
+                  },
+                  "runAfter": {}
+                }
+              },
+              "runAfter": {
+                "logicappfunctiondemo": [
+                  "Succeeded",
+                  "Failed"
+                ]
+              },
+              "else": {
+                "actions": {
+                  "Put_a_message_on_a_queue_5": {
+                    "type": "ApiConnection",
+                    "inputs": {
+                      "host": {
+                        "connection": {
+                          "name": "@parameters('$connections')['azurequeues']['connectionId']"
+                        }
+                      },
+                      "method": "post",
+                      "path": "/@{encodeURIComponent('errorqueue')}/messages",
+                      "body": "{\"failed\":@{body('logicappfunctiondemo')}@{outputs('logicappfunctiondemo')['statusCode']}@{body('Put_a_message_on_a_queue_7')}}"
+                    },
+                    "runAfter": {}
+                  }
+                }
+              }
+            },
+            "HTTP": {
+              "type": "Http",
+              "inputs": {
+                "method": "POST",
+                "uri": "https://sfadsatriggerfunction.azurewebsites.net/api/ApprenticeshipTriggerFunction?code=XqgEX7B4mgp72GZ6H1agV/YeGlkmbRARumV8Pr3Kft4OxI2DjU6egw==&name=dinesh",
+                "headers": {
+                  "Authorization": "Basic ZGluZXNoLnRyaXBhdGhpQG9wZW5lbmVyZ2kuY29tOkRpbmVzaEA3Mw==",
+                  "Content-Type": "application/json"
+                },
+                "body": {
+                  "FirstName": "Dinesh",
+                  "LastName": "Tripathi",
+                  "Name": "Dinesh"
+                }
+              },
+              "runAfter": {}
+            },
+            "logicappfunctiondemo": {
+              "type": "Function",
+              "inputs": {
+                "body": "@body('Put_a_message_on_a_queue_7')",
+                "function": {
+                  "id": "/subscriptions/b20a7294-6951-4107-88df-d7d320218670/resourceGroups/sfabetagroup/providers/Microsoft.Web/sites/sfadsaqueuebasedfunction/functions/logicappfunctiondemo"
+                }
+              },
+              "runAfter": {
+                "Put_a_message_on_a_queue_7": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Put_a_message_on_a_queue_7": {
+              "type": "ApiConnection",
+              "inputs": {
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['azurequeues_1']['connectionId']"
+                  }
+                },
+                "method": "post",
+                "path": "/@{encodeURIComponent('vacancysummaryqueueitem')}/messages",
+                "body": "TestMessage"
+              },
+              "runAfter": {}
+            },
+            "Put_a_message_on_a_queue_3": {
+              "type": "ApiConnection",
+              "inputs": {
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['azurequeues']['connectionId']"
+                  }
+                },
+                "method": "post",
+                "path": "/@{encodeURIComponent('errorqueue')}/messages",
+                "body": "{\"Completed\":@{body('Put_a_message_on_a_queue')}@{body('Put_a_message_on_a_queue_2')}@{body('Put_a_message_on_a_queue_4')}@{body('ApprenticeshipTriggerFunction_2')}@{outputs('ApprenticeshipTriggerFunction_2')['statusCode']}@{body('HTTP')}@{outputs('HTTP')['statusCode']}@{body('Put_a_message_on_a_queue_7')}}"
+              },
+              "runAfter": {
+                "Condition": [
+                  "Succeeded"
+                ],
+                "Condition_2": [
+                  "Succeeded"
+                ]
+              }
+            }
+          },
+          "parameters": {
+            "$connections": {
+              "defaultValue": {},
+              "type": "Object"
+            }
+          },
+          "triggers": {
+            "Recurrence": {
+              "type": "Recurrence",
+              "recurrence": {
+                "frequency": "Minute",
+                "interval": 3
+              }
+            }
+          },
+          "contentVersion": "1.0.0.0",
+          "outputs": {}
+        },
+        "parameters": {
+          "$connections": {
+            "value": {
+              "azurequeues": {
+                "id": "[concat(subscription().id, '/providers/Microsoft.Web/locations/', parameters('logicAppLocation'), '/managedApis/', 'azurequeues')]",
+                "connectionId": "[resourceId('Microsoft.Web/connections', parameters('azurequeues_3_Connection_Name'))]",
+                "connectionName": "[parameters('azurequeues_3_Connection_Name')]"
+              },
+              "azurequeues_1": {
+                "id": "[concat(subscription().id, '/providers/Microsoft.Web/locations/', parameters('logicAppLocation'), '/managedApis/', 'azurequeues')]",
+                "connectionId": "[resourceId('Microsoft.Web/connections', parameters('azurequeues_2_Connection_Name'))]",
+                "connectionName": "[parameters('azurequeues_2_Connection_Name')]"
+              }
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/connections', parameters('azurequeues_3_Connection_Name'))]",
+        "[resourceId('Microsoft.Web/connections', parameters('azurequeues_2_Connection_Name'))]"
+      ]
+    },
+    {
+      "type": "MICROSOFT.WEB/CONNECTIONS",
+      "apiVersion": "2016-06-01",
+      "name": "[parameters('azurequeues_1_Connection_Name')]",
+      "location": "[parameters('logicAppLocation')]",
+      "properties": {
+        "api": {
+          "id": "[concat(subscription().id, '/providers/Microsoft.Web/locations/', parameters('logicAppLocation'), '/managedApis/', 'azurequeues')]"
+        },
+        "displayName": "[parameters('azurequeues_1_Connection_DisplayName')]",
+        "parameterValues": {
+          "storageaccount": "[parameters('azurequeues_1_storageaccount')]",
+          "sharedkey": "[parameters('azurequeues_1_sharedkey')]"
+        }
+      }
+    },
+    {
+      "type": "MICROSOFT.WEB/CONNECTIONS",
+      "apiVersion": "2016-06-01",
+      "name": "[parameters('azurequeues_3_Connection_Name')]",
+      "location": "[parameters('logicAppLocation')]",
+      "properties": {
+        "api": {
+          "id": "[concat(subscription().id, '/providers/Microsoft.Web/locations/', parameters('logicAppLocation'), '/managedApis/', 'azurequeues')]"
+        },
+        "displayName": "[parameters('azurequeues_3_Connection_DisplayName')]",
+        "parameterValues": {
+          "storageaccount": "[parameters('azurequeues_3_storageaccount')]",
+          "sharedkey": "[parameters('azurequeues_3_sharedkey')]"
+        }
+      }
+    },
+    {
+      "type": "MICROSOFT.WEB/CONNECTIONS",
+      "apiVersion": "2016-06-01",
+      "name": "[parameters('azurequeues_2_Connection_Name')]",
+      "location": "[parameters('logicAppLocation')]",
+      "properties": {
+        "api": {
+          "id": "[concat(subscription().id, '/providers/Microsoft.Web/locations/', parameters('logicAppLocation'), '/managedApis/', 'azurequeues')]"
+        },
+        "displayName": "[parameters('azurequeues_2_Connection_DisplayName')]",
+        "parameterValues": {
+          "storageaccount": "[parameters('azurequeues_2_storageaccount')]",
+          "sharedkey": "[parameters('azurequeues_2_sharedkey')]"
+        }
+      }
+    }
+  ],
+  "outputs": {}
+}
